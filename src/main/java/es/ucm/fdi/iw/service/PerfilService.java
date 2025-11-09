@@ -24,7 +24,7 @@ public class PerfilService {
     public void actualizarPerfil(User user, String username, String email, String description, String oldPassword,
             String newPassword, String img) {
 
-        // Check for duplicate username
+        // Check for duplicate usernameAdd commentMore actions
         if (!user.getUsername().equals(username) && usernameExists(username)) {
             throw new IllegalArgumentException("Username is already in use.");
         }

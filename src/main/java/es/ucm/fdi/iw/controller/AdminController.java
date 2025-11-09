@@ -1,14 +1,17 @@
 package es.ucm.fdi.iw.controller;
 
+import java.util.Date;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +20,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import es.ucm.fdi.iw.dto.UserCommentDTO;
 import es.ucm.fdi.iw.model.User;
+import es.ucm.fdi.iw.service.MessageService;
+import es.ucm.fdi.iw.service.UserService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.servlet.http.HttpSession;
@@ -123,8 +129,10 @@ public class AdminController {
         ObjectMapper mapper = new ObjectMapper();
         try {
             List<User> results = q.getResultList();
-            System.out.println("Utenti trovati: " + results.size());
-            return mapper.writeValueAsString(results);
+            // Mapea a DTO plano para evitar problemas de serialización con jpa y
+            // no enviar datos innecesarios como la contraseña
+            List<UserDTO> dtos = results.stream().map(UserDTO::fromUser).toList();
+            return mapper.writeValueAsString(dtos);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
             return "{}";
@@ -163,6 +171,25 @@ public class AdminController {
         }
     }
 
+    @Autowired
+    private UserService userService;
+
+    @GetMapping("/user/{name}")
+    public String verPerfil(@PathVariable String name, Model model) {
+        model.addAttribute("user", userService.findByUsername(name));
+        return "ver-perfil";
+    }
+
+    @Autowired
+    private MessageService messageService;
+
+    @PostMapping("/user/submitComment")
+    public ResponseEntity<?> submitComment(@ModelAttribute UserCommentDTO udto) {
+        messageService.sendMessage(userService.findByUsername("ArenaOfMusic"),
+                userService.findByUsername(udto.getUsername()), udto.getComment());
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping({ "/spectate", "/spectate/" })
     public String spectate(Model model) {
         return "admin/spectate";
@@ -171,5 +198,32 @@ public class AdminController {
     @GetMapping({ "/stats", "/stats/" })
     public String stats(Model model) {
         return "admin/stats";
+    }
+
+    // DTO interno
+    public static class UserDTO {
+        public Long id;
+        public String username;
+        public String email;
+        public String roles;
+        public boolean enabled;
+        public boolean banned;
+        public String profileImage;
+        public Date creationDateTime;
+        public Date lastLogin;
+
+        public static UserDTO fromUser(User u) {
+            UserDTO dto = new UserDTO();
+            dto.id = u.getId();
+            dto.username = u.getUsername();
+            dto.email = u.getEmail();
+            dto.roles = u.getRoles();
+            dto.enabled = u.isEnabled();
+            dto.banned = u.isBanned();
+            dto.profileImage = u.getProfileImage();
+            dto.creationDateTime = u.getCreationDateTime();
+            dto.lastLogin = u.getLastLogin();
+            return dto;
+        }
     }
 }

@@ -76,13 +76,15 @@ public class PartidaController {
             @RequestParam Long playlistId,
             @RequestParam int rondas,
             @RequestParam int tiempo,
-            @RequestParam String modoJuego,
+            @RequestParam String gameAnswerMode,
+            @RequestParam String answerType,
             @RequestParam int maxPlayers, // Se añadirá cuando se implemente el modo multijugador
             RedirectAttributes redirectAttributes,
             HttpSession session) {
 
         User creator = (User) session.getAttribute("u");
-        GameConfigDTO gameConfig = new GameConfigDTO(playlistId, modoJuego, rondas, tiempo, creator.getId(), maxPlayers,
+        GameConfigDTO gameConfig = new GameConfigDTO(playlistId, gameAnswerMode, answerType, rondas, tiempo,
+                creator.getId(), maxPlayers,
                 0, maxPlayers > 1);
         try {
             UUID gameId = partidaService.createGame(gameConfig);
@@ -116,11 +118,15 @@ public class PartidaController {
             // Obtener información de la playlist
             Playlist playlist = game.getPlaylist();
 
+            String modo = gameConfig.getMaxPlayers() == 1 ? "solo"
+                    : (gameConfig.getMaxPlayers() == 2 ? "duel" : "multiplayer");
             // Agregar datos al modelo
             model.addAttribute("gameId", game.getId().toString());
             model.addAttribute("players", players);
             model.addAttribute("gameConfig", gameConfig);
+            model.addAttribute("modo", modo);
             model.addAttribute("playlist", playlist);
+            model.addAttribute("playlists", partidaService.getActivePlaylists());
             return "sala-espera";
         } catch (ResponseStatusException e) {
             String reason = "Error al acceder a la sala de espera: " + e.getReason();
@@ -131,38 +137,76 @@ public class PartidaController {
         }
     }
 
-    @PostMapping("/partida/abandonar/{gameId}")
-    public ResponseEntity<String> abandonarPartida(@PathVariable UUID gameId, HttpServletResponse response) {
+    @PostMapping("/partida/actualizar-configuracion")
+    public ResponseEntity<?> actualizarConfiguracionPartida(
+            @RequestParam UUID gameId,
+            @RequestParam Long playlistId,
+            @RequestParam int rondas,
+            @RequestParam int tiempo,
+            @RequestParam String gameAnswerMode,
+            @RequestParam String answerType,
+            RedirectAttributes redirectAttributes, HttpSession session) {
         try {
-            Game game = partidaService.getGameById(gameId);
-            if (game == null || !game.getActive()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La partida no existe.");
-            }
-            if (game.getGameState().equals(Game.GameState.FINISHED)
-                    || game.getGameState().equals(Game.GameState.ABANDONED)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La partida no se puede abandonar.");
-            }
-            partidaService.leaveGame(game);
+            Game game = validarEstadoPartida(gameId, Game.GameState.WAITING);
+            User creator = (User) session.getAttribute("u");
 
-            ResponseCookie cookie = ResponseCookie.from("partidaAbandonada" + gameId, "true")
-                    .path("/")
-                    .maxAge(10)
-                    .sameSite("Lax")
-                    .httpOnly(false)
-                    .build();
+            GameConfigDTO gameConfig = new GameConfigDTO();
+            gameConfig.parseGameConfigDTO(game.getConfigJson());
 
-            response.addHeader("Set-Cookie", cookie.toString());
-            return ResponseEntity.ok("Partida abandonada con éxito.");
+            // Verificar que el creador de la partida es el usuario actual
+            if (gameConfig.getHostId() != creator.getId()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para modificar la partida.");
+            }
+
+            GameConfigDTO newGameConfig = new GameConfigDTO(
+                    playlistId, gameAnswerMode, answerType, rondas, tiempo,
+                    creator.getId(), gameConfig.getMaxPlayers(), gameConfig.getNumPlayers(),
+                    gameConfig.getMultiplayer());
+            partidaService.updateGameConfig(game, newGameConfig);
+
+            // Puedes devolver un mensaje de éxito o el nuevo estado si lo necesitas
+            return ResponseEntity.ok(Map.of("success", true));
         } catch (ResponseStatusException e) {
-            return ResponseEntity.status(e.getStatusCode()).build();
+            String reason = "Error al actualizar la configuración de la partida: " + e.getReason();
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", reason));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            String reason = "Error al actualizar la configuración de la partida: " + e.getMessage();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", reason));
+        }
+    }
+
+    // Obtener títulos
+    @GetMapping("/partida/obtenerTitulos")
+    public ResponseEntity<?> obtenerTitulos() {
+        try {
+            List<String> titles = partidaService.getTitles();
+            return ResponseEntity.ok(titles);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al obtener los títulos: " + e.getMessage()));
+        }
+    }
+
+    // Obtener artistas
+    @GetMapping("/partida/obtenerArtistas")
+    public ResponseEntity<?> obtenerArtistas() {
+        try {
+            List<String> artists = partidaService.getArtists();
+            return ResponseEntity.ok(artists);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al obtener los artistas: " + e.getMessage()));
         }
     }
 
     @PostMapping("/partida/iniciar/{gameId}")
-    public String iniciarPartida(@PathVariable UUID gameId, RedirectAttributes redirectAttributes) {
+    public String iniciarPartida(@PathVariable UUID gameId, RedirectAttributes redirectAttributes,
+            HttpSession session) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
+
             Game game = validarEstadoPartida(gameId, Game.GameState.WAITING);
             partidaService.startGame(game);
             return "redirect:/partida/" + gameId.toString();
@@ -176,8 +220,11 @@ public class PartidaController {
     }
 
     @GetMapping("/partida/{gameId}")
-    public String partida(@PathVariable UUID gameId, Model model, RedirectAttributes redirectAttributes) {
+    public String partida(@PathVariable UUID gameId, Model model, RedirectAttributes redirectAttributes,
+            HttpSession session) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
+
             Game game = validarEstadoPartida(gameId, Game.GameState.PLAYING);
 
             // Obtener Configuracion de la Partida
@@ -201,27 +248,53 @@ public class PartidaController {
         }
     }
 
-    @GetMapping("/partida/obtenerTitulos")
-    public ResponseEntity<List<String>> obtenerTitulos() {
+    @PostMapping("/partida/abandonar/{gameId}")
+    public ResponseEntity<?> abandonarPartida(@PathVariable UUID gameId, HttpServletResponse response,
+            HttpSession session) {
         try {
-            List<String> titles = partidaService.getTitles();
-            return ResponseEntity.ok(titles);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
+            Game game = partidaService.getGameById(gameId);
+            if (game == null || !game.getActive()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "La partida no existe.");
+            }
+            if (game.getGameState().equals(Game.GameState.FINISHED)
+                    || game.getGameState().equals(Game.GameState.ABANDONED)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La partida no se puede abandonar.");
+            }
+            partidaService.leaveGame(game);
+
+            ResponseCookie cookie = ResponseCookie.from("partidaAbandonada" + gameId, "true")
+                    .path("/")
+                    .maxAge(10)
+                    .sameSite("Lax")
+                    .httpOnly(false)
+                    .build();
+
+            response.addHeader("Set-Cookie", cookie.toString());
+            return ResponseEntity.ok("Partida abandonada con éxito.");
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", "Error al abandonar la partida: " + e.getReason()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error inesperado al abandonar la partida: " + e.getMessage()));
         }
     }
 
     @PostMapping("/partida/inicioRonda/{gameId}")
-    public ResponseEntity<RoundInfoDTO> inicioRonda(@PathVariable UUID gameId, RedirectAttributes redirectAttributes) {
+    public ResponseEntity<?> inicioRonda(@PathVariable UUID gameId, RedirectAttributes redirectAttributes,
+            HttpSession session) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
             Game game = validarEstadoPartida(gameId, Game.GameState.PLAYING);
-
             RoundInfoDTO response = partidaService.startRound(game);
             return ResponseEntity.ok(response);
         } catch (ResponseStatusException e) {
-            return ResponseEntity.status(e.getStatusCode()).build();
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("error", "Error al iniciar la ronda: " + e.getReason()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error inesperado al iniciar la ronda: " + e.getMessage()));
         }
     }
 
@@ -231,8 +304,10 @@ public class PartidaController {
     }
 
     @GetMapping("/partida/song/{id}/audio/{gameId}")
-    public ResponseEntity<byte[]> getSongAudio(@PathVariable Long id, @PathVariable UUID gameId) {
+    public ResponseEntity<byte[]> getSongAudio(@PathVariable Long id, @PathVariable UUID gameId, HttpSession session) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
+
             Game game = validarEstadoPartida(gameId, Game.GameState.PLAYING);
 
             GameConfigDTO gameConfig = new GameConfigDTO();
@@ -260,32 +335,35 @@ public class PartidaController {
     }
 
     @GetMapping("/partida/playlist/{id}/cover")
-    public ResponseEntity<byte[]> getPlaylistCover(@PathVariable Long id) {
+    public ResponseEntity<byte[]> getPlaylistCover(@PathVariable Long id, HttpSession session) {
         return responseEntityFromFileGetter(() -> playlistService.getPlaylistCover(id));
     }
 
     @PostMapping("/partida/finRonda/{gameId}")
-    public ResponseEntity<RoundResponseDTO> finRonda(@PathVariable UUID gameId, @RequestBody Map<Long, String> body,
-            RedirectAttributes redirectAttributes) {
+    public ResponseEntity<?> finRonda(@PathVariable UUID gameId, @RequestBody Map<Long, String> body,
+            RedirectAttributes redirectAttributes, HttpSession session) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
             Game game = validarEstadoPartida(gameId, Game.GameState.PLAYING);
-
             RoundResponseDTO response = partidaService.endRound(game, body);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al finalizar la ronda: " + e.getMessage()));
         }
     }
 
     @PostMapping("/partida/finalizar/{gameId}")
-    public ResponseEntity<Void> finalizarPartida(@PathVariable UUID gameId, RedirectAttributes redirectAttributes) {
+    public ResponseEntity<?> finalizarPartida(@PathVariable UUID gameId, RedirectAttributes redirectAttributes,
+            HttpSession session) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
             Game game = validarEstadoPartida(gameId, Game.GameState.PLAYING);
-
             partidaService.endGame(game);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al finalizar la partida: " + e.getMessage()));
         }
     }
 
@@ -293,6 +371,7 @@ public class PartidaController {
     public String resultados(Model model, @PathVariable UUID gameId, HttpSession session,
             RedirectAttributes redirectAttributes) {
         try {
+            playerEnPartida(gameId, ((User) session.getAttribute("u")).getId());
             Game game = validarEstadoPartida(gameId, Game.GameState.FINISHED);
 
             User creator = (User) session.getAttribute("u");
@@ -321,6 +400,13 @@ public class PartidaController {
     }
 
     // Métodos auxiliares
+
+    private void playerEnPartida(UUID gameId, Long userId) throws ResponseStatusException {
+        // Verificar si el jugador está en la partida
+        if (!partidaService.isPlayerInGame(userId, gameId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No estás en la partida.");
+        }
+    }
 
     private Game validarEstadoPartida(UUID gameId, Game.GameState estadoEsperado) throws ResponseStatusException {
         // Validar el estado de la partida

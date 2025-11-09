@@ -81,7 +81,7 @@
 
     -->
         <div class="container my-5">
-            <h2 class="text-center mb-4 text-success bg-light p-2 rounded">Historial de Partidas</h2>
+            <h2 class="text-center mb-4 text-success p-2 rounded">Historial de Partidas</h2>
             <!-- Tabla de historial de partidas -->
             <table class="table table-striped">
                 <thead>
@@ -89,12 +89,13 @@
                         <th class="text-start">Playlist</th>
                         <th>Posición</th>
                         <th>Aciertos</th>
+                        <th>Fecha</th>
                         <th>Detalles</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr th:if="${#lists.isEmpty(games)}">
-                        <td colspan="4" class="text-center text-muted">No has jugado ninguna partida.</td>
+                        <td colspan="5" class="text-center text-muted">No has jugado ninguna partida.</td>
                     </tr>
                     <tr th:each="game : ${games}" class="text-center">
                         <td class="text-start">
@@ -105,6 +106,9 @@
                         </td>
                         <td>
                             <span th:text="${game.guessedSongs}"></span> / <span th:text="${game.totalSongs}"></span>
+                        </td>
+                        <td>
+                            <span th:text="${game.creationDateTime}"></span>
                         </td>
                         <td>
                             <a th:href="@{/partida/resultados/{id}(id=${game.gameId})}"
@@ -140,7 +144,7 @@
                                         class="rounded-circle border border-3 border-success mb-3" alt="Foto de Perfil"
                                         style="width: 150px; height: 150px; object-fit: cover;">
                                 </div>
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
                                     <input type="file" class="form-control me-2" id="profileImage" name="profileImage"
                                         accept="image/*">
                                     <button type="button" class="btn btn-outline-danger btn-sm"
@@ -152,6 +156,8 @@
                                     <label for="username" class="form-label text-success">Nombre de Usuario</label>
                                     <input type="text" class="form-control" id="username" name="username"
                                         placeholder="Nombre Usuario" th:value="${u.username}">
+                                    <small class="form-text text-muted">⚠️ Si cambias de nombre de usuario tendrás que
+                                        iniciar sesión de nuevo</small>
                                 </div>
                                 <div class="mb-3">
                                     <label for="description" class="form-label text-success">Descripción</label>
@@ -222,7 +228,7 @@
                 alertBox.classList.remove("d-none");
 
                 setTimeout(() => {
-                    location.reload();
+                    window.location.href = "/perfil";
                 }, 1000);
             } catch (err) {
                 alertBox.className = "alert alert-danger";

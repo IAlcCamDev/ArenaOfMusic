@@ -36,8 +36,8 @@ public class UserService {
     // Buscar un usuario por su username
     public User findByUsername(String username) {
         return entityManager.createQuery(
-            "SELECT u FROM User u WHERE u.username = :username", User.class)
-            .setParameter("username", username)
-            .getSingleResult();
+                "SELECT u FROM User u WHERE u.username = :username", User.class)
+                .setParameter("username", username)
+                .getSingleResult();
     }
 }

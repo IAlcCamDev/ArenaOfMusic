@@ -1,13 +1,15 @@
 package es.ucm.fdi.iw.controller;
 
+import java.security.Principal;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,7 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import es.ucm.fdi.iw.LocalData;
 import es.ucm.fdi.iw.dto.game.GameRoundsDTO;
 import es.ucm.fdi.iw.model.Game;
 import es.ucm.fdi.iw.model.User;
@@ -41,8 +42,6 @@ public class PerfilController {
     @Autowired
     private PartidaService partidaService;
 
-    private static Log log = LogFactory.getLog(LocalData.class);
-
     @Getter
     @AllArgsConstructor
     public static class GameSummary {
@@ -51,6 +50,7 @@ public class PerfilController {
         private int guessedSongs;
         private int totalSongs;
         private String playlistName;
+        private String creationDateTime;
     }
 
     @GetMapping("/perfil")
@@ -59,7 +59,10 @@ public class PerfilController {
         User user = (User) session.getAttribute("u");
 
         List<Game> games = perfilService.getUserGames(user);
+        games.sort(Comparator.comparing(Game::getCreationDateTime).reversed());
+
         List<GameSummary> summaries = new ArrayList<>();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy - HH:mm");
 
         for (Game game : games) {
             try {
@@ -80,13 +83,15 @@ public class PerfilController {
                 }
                 String playlistName = game.getPlaylist().getName();
                 int totalSongs = songResults.size();
+                String formattedDate = sdf.format(game.getCreationDateTime());
 
                 summaries.add(new GameSummary(
                         game.getId(),
                         position,
                         guessedSongs,
                         totalSongs,
-                        playlistName));
+                        playlistName,
+                        formattedDate));
 
             } catch (Exception e) {
                 // log error se vuoi
@@ -102,8 +107,9 @@ public class PerfilController {
     @ResponseBody
     public ResponseEntity<?> editarPerfilJson(
             @RequestBody Map<String, String> data,
-            HttpSession session) {
-        User user = (User) session.getAttribute("u");
+            HttpSession session,
+            Principal principal) {
+        User user = perfilService.findById(((User) session.getAttribute("u")).getId());
 
         try {
             perfilService.actualizarPerfil(
@@ -114,11 +120,18 @@ public class PerfilController {
                     data.get("oldPassword"),
                     data.get("password"), data.get("img"));
 
-            session.setAttribute("u", perfilService.findById(user.getId())); // actualiza sesión
+            if (!principal.getName().equals(user.getUsername()))
+                session.invalidate();
+            else
+                session.setAttribute("u", perfilService.findById(user.getId()));
+
             return ResponseEntity.ok(Map.of("message", "Perfil actualizado correctamente"));
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al actualizar el perfil"));
         }
     }
-
 }

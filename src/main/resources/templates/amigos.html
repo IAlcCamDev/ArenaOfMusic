@@ -18,8 +18,7 @@
                 <!-- Lista de amigos -->
                 <div class="col-md-5 left-panel me-md-4 offset-md-3" id="leftPanel">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2 class="fw-bold"
-                            th:text="${viewType == 'solicitudes' ? 'Solicitudes' : 'Amigos'}">
+                        <h2 class="fw-bold" th:text="${viewType == 'solicitudes' ? 'Solicitudes' : 'Amigos'}">
                             Amigos
                         </h2>
                     </div>
@@ -30,35 +29,26 @@
                             <span class="input-group-text border-end-0">
                                 <i class="bi bi-search"></i>
                             </span>
-                            <input
-                                type="text"
-                                class="form-control border-start-0 shadow-none"
-                                placeholder="Buscar amigos"
-                                id="friendSearch"
-                            />
+                            <input type="text" class="form-control border-start-0 shadow-none"
+                                placeholder="Buscar amigos" id="friendSearch" />
                         </div>
 
                         <!-- Vista de amigos -->
                         <div class="ms-2" th:if="${viewType} == 'solicitudes'">
-                            <a
-                                class="btn d-flex align-items-center justify-content-center border"
-                                th:href="@{/amigos(view='amigos')}"
-                                style="width: 40px; height: 40px;">
+                            <a class="btn d-flex align-items-center justify-content-center border"
+                                th:href="@{/amigos(view='amigos')}" style="width: 40px; height: 40px;">
                                 <i class="bi bi-people-fill"></i>
                             </a>
                         </div>
 
                         <!-- Vista de solicitudes -->
                         <div class="ms-2" th:if="${viewType} == 'amigos'">
-                            <a
-                                class="btn d-flex align-items-center justify-content-center position-relative border"
-                                th:href="@{/amigos(view='solicitudes')}"
-                                style="width: 40px; height: 40px;">
+                            <a class="btn d-flex align-items-center justify-content-center position-relative border"
+                                th:href="@{/amigos(view='solicitudes')}" style="width: 40px; height: 40px;">
                                 <i class="bi bi-person-fill"></i>
 
                                 <!-- Indicador de notificación -->
-                                <span
-                                    id="notificationIndicator"
+                                <span id="notificationIndicator"
                                     class="position-absolute bg-danger border border-light rounded-circle"
                                     style="width: 8px; height: 8px; top: 5px; left: 25px; display: none;">
                                 </span>
@@ -72,7 +62,7 @@
 
                         <!-- Añadir amigos -->
                         <div class="d-grid">
-                            <button class="btn border" onclick="event.stopPropagation(); addFriend()">
+                            <button class="btn border" data-bs-target="#addFriend" data-bs-toggle="modal">
                                 <i class="bi bi-plus"></i> Añadir amigos
                             </button>
                         </div>
@@ -90,6 +80,75 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="addFriend" tabindex="-1" aria-labelledby="addFriendModal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="addFriend">Añadir amigos</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form">
+                            <label for="friendUsername" class="p-1">Introduce el nombre de usuario:</label>
+                            <input type="text" class="form-control" id="friendUsername"
+                                placeholder="Introduce el nombre de usuario">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success" onclick="addFriend();"
+                            data-bs-dismiss="modal">Agregar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="blockFriend" tabindex="-1" aria-labelledby="blockFriendModal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="blockFriendModalLabel">Bloquear Amigo</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>¿Seguro que deseas bloquear a este usuario?</p>
+                        <input type="hidden" id="blockFriendUsername" />
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger" onclick="confirmBlockUser()"
+                            data-bs-dismiss="modal">Bloquear</button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="deleteFriend" tabindex="-1" aria-labelledby="deleteFriendModal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="deleteFriendLabel">Eliminar amigos</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>¿Seguro que deseas eliminar este amigo?</p>
+                        <input type="hidden" id="deleteFriendUsername" />
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger" onclick="confirmDeleteFriend()"
+                            data-bs-dismiss="modal">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <th:block th:replace="~{fragments/footer.html :: footer}" />
@@ -98,13 +157,12 @@
         // Acceder a perfil de un usuario
         function handleUser(event) {
             const li = event.target.closest("li");
-            if(li) {
+            if (li) {
                 const friendData = {
                     username: li.getAttribute("data-username"),
                     photoUrl: li.getAttribute("data-photourl") || "/img/default-profile.png",
                 };
-                //loadFriendProfile(friendData);
-                window.location.href = `/amigos/ver-perfil/${encodeURIComponent(friendData.username)}`;
+                loadFriendProfile(friendData);
             }
         }
 
@@ -113,11 +171,14 @@
             const filters = { view: viewType, search: document.getElementById("friendSearch").value };
 
             go(config.rootUrl + "/amigos/list", "POST", filters)
-            .then(data => {
-                let html = "";
-                data.forEach(item => {
-                    if(viewType === 'amigos') {
-                        html += `
+                .then(data => {
+                    if (viewType === 'solicitudes') {
+                        handleFriendRequests(data.length);
+                    }
+                    let html = "";
+                    data.forEach(item => {
+                        if (viewType === 'amigos') {
+                            html += `
                             <li class="list-group-item d-flex align-items-center border-0"
                                 data-username="${item.username}"
                                 data-photourl="${item.photoUrl}"
@@ -157,7 +218,7 @@
                                             <a
                                                 class="dropdown-item small"
                                                 style="cursor: pointer; user-select: none;"
-                                                onclick="event.stopPropagation(); deleteFriend('${item.username}')">
+                                                onclick="event.stopPropagation(); showDeleteFriendModal('${item.username}')">
                                                 <i class="bi bi-person-x me-3"></i>Eliminar
                                             </a>
                                         </li>
@@ -165,7 +226,7 @@
                                             <a
                                                 class="dropdown-item text-danger small"
                                                 style="cursor: pointer; user-select: none;"
-                                                onclick="event.stopPropagation(); blockUser('${item.username}')">
+                                                onclick="event.stopPropagation(); showBlockUserModal('${item.username}')">
                                                 <i class="bi bi-ban me-3"></i>Bloquear y reportar
                                             </a>
                                         </li>
@@ -173,9 +234,9 @@
                                 </div>
                             </li>
                         `;
-                    }
-                    else if (viewType === 'solicitudes') {
-                        html += `
+                        }
+                        else if (viewType === 'solicitudes') {
+                            html += `
                             <li class="list-group-item d-flex align-items-center border-0"
                                 data-username="${item.username}"
                                 data-photourl="${item.photoUrl}"
@@ -201,36 +262,45 @@
                                 </div>
                             </li>
                         `;
+                        }
+                    });
+                    if (viewType === 'amigos') {
+                        const friendList = document.getElementById("friendList");
+                        if (friendList) {
+                            friendList.innerHTML = html;
+                        }
                     }
+                    else if (viewType === 'solicitudes') {
+                        const requestList = document.getElementById("requestList");
+                        if (requestList) {
+                            requestList.innerHTML = html;
+                        }
+                    }
+                })
+                .catch(error => {
+                    showErrorNotification("Error al cargar la lista de amigos y solicitudes", 'error');
+                    console.error(error)
                 });
-                if(viewType === 'amigos') {
-                    document.getElementById("friendList").innerHTML = html;
-                }
-                else if(viewType === 'solicitudes') {
-                    document.getElementById("requestList").innerHTML = html;
-                }
-            })
-            .catch(error => console.error(error));
         }
 
         const myName = /*[[${u.username}]]*/ "me";
 
-        ws.receive = (m) => {
-            if(m.to !== myName) {
-                return;
-            }
+        ws.subscribe("/user/queue/updates", (m) => {
+            if (m.type !== "message") return;
+            if (m.from === myName) return; // Ignorar mensajes enviados por mí
 
-            const li = document.querySelector(`li[data-username="${m.from}"]`);
-            if(li) {
-                const count = (parseInt(li.dataset.unread || "0", 10) + 1);
-                li.dataset.unread = count;
-                li.querySelector('.unread-badge').textContent = ` · ${count} mensajes nuevos`;
+            const message = m.data;
+
+            const li = document.querySelector(`li[data-username="${message.from}"]`);
+            if (li) {
+                const count = parseInt(li.dataset.unread || "0", 10);
+                li.dataset.unread = count + 1;
+                li.querySelector('.unread-badge').textContent = ` · ${count + 1} mensajes nuevos`;
             }
-        };
+        });
 
         // Cargar el perfil de un amigo
-        function loadFriendProfile(friendData)
-        {
+        function loadFriendProfile(friendData) {
             // Desplazar el panel de amigos o solicitudes a la izquierda
             document.getElementById("leftPanel").classList.remove("offset-md-3");
 
@@ -238,23 +308,32 @@
             document.getElementById("rightPanel").style.display = 'block';
 
             go(config.rootUrl + "/amigos/profile", "POST", friendData)
-            .then(data => {
-                let profileHtml = `
+                .then(data => {
+                    let profileHtml = `
                     <!-- Perfil de usuario -->
-                    <div class="d-flex align-items-center mb-5">
-                        <img src="${data.photoUrl}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;"/>
+                    <div class="d-flex align-items-between mb-5">
+                        <img src="${data.photoUrl}" class="rounded me-3" style="width: 90px; height: 90px; object-fit: cover;"/>
                         <div>
                             <h3 class="fw-semibold mb-0">${data.username}</h3>
+                            <h4 class="fs-4 text-muted mt-1">${data.level} EXP</h4>
                             <h5 class="fs-5 text-muted mt-1">${data.status}</h5>
                         </div>
-                        <!-- Cerrar perfil -->
-                        <button
-                            type="button"
-                            class="btn btn-sm ms-auto me-3 d-flex align-items-center"
-                            onclick="hideFriendProfile()">
-                            <span class="btn-close" aria-hidden="true"></span>
-                            <span class="ms-2" style="font-size: 1.1rem; color: #6C757D">Cerrar</span>
-                        </button>
+                        <div class="d-flex justify-content-end align-items-center ms-auto">
+                            <!-- Abrir Chat -->
+                            <button
+                                type="button"
+                                class="m-1 btn d-flex align-items-center"
+                                onclick="openChat('${data.username}')">
+                                    <i class="bi bi-send" aria-hidden="true"></i>
+                            </button>
+                            <!-- Cerrar Perfil -->
+                            <button
+                                type="button"
+                                class=" m-1 btn d-flex align-items-center"
+                                onclick="hideFriendProfile()">
+                                    <span class="btn-close" aria-hidden="true"></span>
+                            </button>
+                         </div>
                     </div>
 
                     <!-- Estadísticas del usuario -->
@@ -266,13 +345,13 @@
                             </div>
 
                             <div class="col">
-                                <h5 class="mb-0 fw-bold">${data.averageScore}</h5>
+                                <h5 class="mb-0 fw-bold">${data.averageScore}%</h5>
                                 <div class="text-muted mt-2">Puntuación media</div>
                             </div>
 
                             <div class="col">
-                                <h5 class="mb-0 fw-bold">${data.maxScore}</h5>
-                                <div class="text-muted mt-2">Máxima puntuación</div>
+                                <h5 class="mb-0 fw-bold">${data.maxScore}%</h5>
+                                <div class="text-muted mt-2">Máxima Puntuación</div>
                             </div>
                         </div>
                     </div>
@@ -281,25 +360,28 @@
                     <h5 class="fw-bold mb-3">Playlists recientes</h5>
                     <ul class="list-group bg-transparent">> -->
                 `;
-                data.recentPlaylists.forEach(playlist => {
-                    profileHtml += `
+                    data.recentPlaylists.forEach(playlist => {
+                        profileHtml += `
                         <li class="list-group-item d-flex align-items-center border-0 bg-transparent mb-2">
                             <div class="me-3">
                                 <div class="rounded" style="width: 50px; height: 50px; overflow: hidden;">
-                                    <!-- <img src="${playlist.id}" class="img-fluid"/> -->
+                                    <img src='/partida/playlist/${playlist.id}/cover' class="img-fluid"/>
                                 </div>
                             </div>
                             <div>
                                 <div class="fw-semibold">${playlist.title}</div>
-                                <small class="text-muted">by ${playlist.description}</small>
+                                <small class="text-muted">· ${playlist.description} ·</small>
                             </div>
                         </li>
                     `
+                    });
+                    profileHtml += '</ul>';
+                    document.getElementById("friendProfile").innerHTML = profileHtml;
+                })
+                .catch(error => {
+                    showErrorNotification("Error al cargar el perfil del amigo", 'error');
+                    console.error(error)
                 });
-                profileHtml += '</ul>';
-                document.getElementById("friendProfile").innerHTML = profileHtml;
-            })
-            .catch(error => console.error(error));
         }
 
         // Ocultar el perfil de un amigo
@@ -314,30 +396,38 @@
         // Aceptar solicitud de amistad
         function acceptRequest(username) {
             go(config.rootUrl + "/amigos/request/accept", "POST", { username: username })
-            .then(data => {
-                if(data.success) {
-                    loadList('solicitudes');
-                    alert("Solicitud de amistad aceptada");
-                }
-            })
-            .catch(error => console.error(error));
-        }
+                .then(data => {
+                    if (data.success) {
+                        loadList('solicitudes');
+                        showErrorNotification("Solicitud de amistad aceptada", 'success');
+                    }
+                })
+                .catch(error => {
+                    showErrorNotification("Error al aceptar la solicitud de amistad", 'error');
+                    console.error(error);
+                })
+        };
+
 
         // Rechazar solicitud de amistadac
         function rejectRequest(username) {
-            go(config.rootUrl + "/amigos/request/reject", "POST", { username: username})
-            .then(data => {
-                if(data.success) {
-                    loadList('solicitudes');
-                }
-            })
-            .catch(error => console.error(error));
+            go(config.rootUrl + "/amigos/request/reject", "POST", { username: username })
+                .then(data => {
+                    if (data.success) {
+                        showErrorNotification("Solicitud de amistad rechazada", 'success');
+                        loadList('solicitudes');
+                    }
+                })
+                .catch(error => {
+                    showErrorNotification("Error al rechazar la solicitud de amistad", 'error');
+                    console.error(error)
+                });
         }
 
         // Abrir el panel de chat
         function openChat(username) {
             const li = document.querySelector(`li[data-username="${username}"]`);
-            if(li) {
+            if (li) {
                 li.dataset.unread = 0;
                 li.querySelector(".unread-badge").textContent = "";
             }
@@ -346,108 +436,123 @@
         }
 
         // Eliminar usuario de la lista de amigos
-        function deleteFriend(username) {
-            if(!confirm(`¿Estás seguro de que quieres eliminar a ${username}?`)) {
-                return;
-            }
+        function confirmDeleteFriend() {
+            const username = document.getElementById("deleteFriendUsername").value;
             go(config.rootUrl + "/amigos/delete", "POST", { username: username })
-            .then(data => {
-                if(data.success) {
-                    loadList('amigos');
-                    alert("Usuario eliminado de la lista de amigos");
-                }
-            })
-            .catch(error => console.error(error));
+                .then(data => {
+                    if (data.success) {
+                        loadList('amigos');
+                        showErrorNotification("Usuario eliminado de la lista de amigos", 'success');
+                    }
+                })
+                .catch(error => {
+                    showErrorNotification("Error al eliminar el usuario de la lista de amigos", 'error');
+                    console.error(error)
+                });
         }
 
         // Bloquear y reportar usuario
-        function blockUser(username) {
-            if(!confirm(`¿Estás seguro de que quieres bloquear a ${username}?`)) {
-                return;
-            }
+        function confirmBlockUser() {
+            const username = document.getElementById("blockFriendUsername").value;
             go(config.rootUrl + "/amigos/block", "POST", { username: username })
-            .then(data => {
-                if(data.success) {
-                    loadList('amigos');
-                    loadList('solicitudes');
-
-                    document.getElementById("reportUsername").value = username;
-                    document.getElementById("reportUserText").textContent = username;
-
-                    new bootstrap.Modal(document.getElementById("reportModal")).show();
-                }
-            })
-            .catch(error => console.error(error));
+                .then(data => {
+                    if (data.success) {
+                        loadList('amigos');
+                        loadList('solicitudes');
+                        showErrorNotification("Usuario bloqueado", 'success');
+                        document.getElementById("reportUsername").value = username;
+                        document.getElementById("reportUserText").textContent = username;
+                        new bootstrap.Modal(document.getElementById("reportModal")).show();
+                    }
+                })
+                .catch(error => {
+                    showErrorNotification("Error al bloquear al usuario", 'error');
+                    console.error(error)
+                });
         }
 
         // Añadir amigos
         function addFriend() {
-            const username = prompt("Introduce el nombre de usuario:");
-            if(username) {
+            event.preventDefault();
+            const username = document.getElementById("friendUsername").value.trim();
+
+            if (username && username !== myName) {
                 go(config.rootUrl + "/amigos/request/send", "POST", { username: username })
-                .then(data => {
-                    if(data.success) {
-                        loadList('amigos');
-                        alert("Solicitud de amistad enviada");
-                    }
-                })
-                .catch(error => console.error(error));
+                    .then(data => {
+                        if (data.success === "ok") {
+                            loadList('amigos');
+                            showErrorNotification("Solicitud de amistad enviada", 'success');
+                        } else {
+                            showErrorNotification(data.success, 'warning');
+                        }
+                    })
+                    .catch(error => {
+                        showErrorNotification("Error al enviar la solicitud de amistad", 'error');
+                        console.error(error)
+                    });
+            } else if (username === myName) {
+                showErrorNotification("No puedes añadirte a ti mismo como amigo", 'warning');
+            } else {
+                showErrorNotification("Por favor, introduce un nombre de usuario válido", 'warning');
             }
         }
 
         // Indicador de solicitudes pendientes
         function updateNotificationIndicator() {
-            go(config.rootUrl + "/amigos/list", "POST", {  view: "solicitudes", search: "" })
-            .then(requests => {
-                document.getElementById("notificationIndicator").style.display = (requests.length > 0 ? "block" : "none");
-            })
-            .catch(error => console.error(error));
+            go(config.rootUrl + "/amigos/list", "POST", { view: "solicitudes", search: "" })
+                .then(requests => {
+                    const notificationIndicator = document.getElementById("notificationIndicator")
+                    if (notificationIndicator) {
+                        notificationIndicator.style.display = (requests.length > 0 ? "block" : "none");
+                    }
+                })
+                .catch(error => console.error(error));
         }
 
         // Actualizar el estado
-        function refresh(viewType)
-        {
+        function refresh(viewType) {
             fetch(config.rootUrl + "/amigos/updateStatus", {
                 method: "POST",
                 credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
-                    [config.csrf.name]: config.csrf.value
+                    'X-CSRF-TOKEN': config.csrf.value
                 }
             })
-            .then(() => {
-                loadList(viewType);
-                updateNotificationIndicator();
-            })
-            .catch(error => console.error(error));
+                .then(() => {
+                    loadList(viewType);
+                    updateNotificationIndicator();
+                })
+                .catch(error => {
+                    showErrorNotification("Error al actualizar el estado de los amigos", 'error');
+                    console.error(error)
+                });
         }
 
         // Cargar la lista al cargar la página y filtrar búsqueda
-        document.addEventListener("DOMContentLoaded", function()
-        {
+        document.addEventListener("DOMContentLoaded", function () {
             const viewType = /*[[${viewType}]]*/ "amigos";
             refresh(viewType);
 
             setInterval(() => refresh(viewType), 10000);
 
-            document.getElementById("friendSearch").addEventListener("input", function() {
+            document.getElementById("friendSearch").addEventListener("input", function () {
                 loadList(viewType);
             });
 
             const friendList = document.getElementById("friendList");
             const requestList = document.getElementById("requestList");
 
-            if(friendList) {
+            if (friendList) {
                 friendList.addEventListener("click", handleUser);
             }
-            if(requestList) {
+            if (requestList) {
                 requestList.addEventListener("click", handleUser);
             }
         });
 
         // Enviar el formulario de reporte
-        document.getElementById("reportForm").addEventListener("submit", function(event)
-        {
+        document.getElementById("reportForm").addEventListener("submit", function (event) {
             event.preventDefault();
 
             const data = {
@@ -456,15 +561,28 @@
             };
 
             go(config.rootUrl + "/amigos/report", "POST", data)
-            .then(response => {
-                bootstrap.Modal.getInstance(document.getElementById("reportModal")).hide();
-                alert("Reporte enviado con éxito");
-            })
-            .catch(error => console.error(error));
+                .then(response => {
+                    bootstrap.Modal.getInstance(document.getElementById("reportModal")).hide();
+                    showErrorNotification("Reporte enviado con éxito", 'success');
+                })
+                .catch(error => {
+                    showErrorNotification("Error al enviar el reporte", 'error');
+                    console.error(error)
+                });
         });
 
         // Actualizar la lista de amigos al volver a la página
         window.addEventListener('pageshow', () => refresh('amigos'));
+
+        function showDeleteFriendModal(username) {
+            document.getElementById("deleteFriendUsername").value = username;
+            new bootstrap.Modal(document.getElementById("deleteFriend")).show();
+        }
+
+        function showBlockUserModal(username) {
+            document.getElementById("blockFriendUsername").value = username;
+            new bootstrap.Modal(document.getElementById("blockFriend")).show();
+        }
     </script>
 </body>
 

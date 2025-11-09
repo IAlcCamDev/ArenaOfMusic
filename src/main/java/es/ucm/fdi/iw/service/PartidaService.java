@@ -1,9 +1,7 @@
 package es.ucm.fdi.iw.service;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -11,11 +9,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.bytedeco.ffmpeg.global.avcodec;
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FFmpegFrameRecorder;
+import org.bytedeco.javacv.Frame;
 import org.springframework.stereotype.Service;
 
 import es.ucm.fdi.iw.dto.game.GameConfigDTO;
@@ -125,6 +128,27 @@ public class PartidaService {
     }
 
     @Transactional
+    public void updateGameConfig(Game game, GameConfigDTO gameConfig) {
+        try {
+            // Verificar si la playlist existe y está activa
+            Playlist playlist = entityManager.find(Playlist.class, gameConfig.getPlaylistId());
+            if (playlist == null || !playlist.isActive()) {
+                throw new IllegalArgumentException(
+                        "La playlist seleccionada no existe o no se encuentra disponible.");
+            }
+            if (getSongsByPlaylistId(playlist.getId()).size() < gameConfig.getRounds()) {
+                throw new IllegalArgumentException(
+                        "La playlist seleccionada no tiene suficientes canciones para el número de rondas configurado.");
+            }
+            game.setConfigJson(gameConfig.toString());
+            game.setPlaylist(playlist);
+            entityManager.persist(game);
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudo actualizar la configuración del juego.", e);
+        }
+    }
+
+    @Transactional
     public void loadSongs(Game game) {
         // Cargar las canciones de la playlist en la partida
         GameConfigDTO gameConfigDTO = new GameConfigDTO();
@@ -177,6 +201,56 @@ public class PartidaService {
         Long songId = gameRoundsDTO.getSong(gameRoundsDTO.getRoundNumber());
         Song song = entityManager.find(Song.class, songId);
 
+        GameConfigDTO gameConfig = new GameConfigDTO();
+        gameConfig.parseGameConfigDTO(game.getConfigJson());
+
+        if (gameConfig.getAnswerType().equals("options")) {
+            List<String> options = new ArrayList<>();
+            // Generar opciones aleatorias para la ronda
+            List<Song> allSongs = getSongsByPlaylistId(game.getPlaylist().getId());
+            allSongs.remove(song); // Eliminar la canción actual de las opciones
+            if (gameConfig.getGameAnswerMode().equals("artist")) {
+                // Recoge todos los artistas únicos de las canciones (excepto el correcto)
+                Set<String> uniqueArtists = new HashSet<>();
+                for (Song s : allSongs) {
+                    uniqueArtists.addAll(s.getArtists());
+                }
+                
+                // Sacamos al primer artista de la cancion para poder añadirlo como respuesta segura
+                //(Aunque si en la cancion participan varios artistas y son seleccionados para
+                // las opciones también se darán por buenas las respuestas)
+                uniqueArtists.remove(song.getArtists().getFirst());
+
+                // Baraja y elige 3
+                List<String> artistOptions = new ArrayList<>(uniqueArtists);
+                Collections.shuffle(artistOptions);
+                for (int i = 0; i < 3 && i < artistOptions.size(); i++) {
+                    options.add(artistOptions.get(i));
+                }
+                options.add(song.getArtists().getFirst());
+            } else {
+                // Títulos únicos
+                Set<String> uniqueTitles = allSongs.stream()
+                        .map(Song::getName)
+                        .collect(Collectors.toSet());
+                List<String> titleOptions = new ArrayList<>(uniqueTitles);
+                Collections.shuffle(titleOptions);
+                for (int i = 0; i < 3 && i < titleOptions.size(); i++) {
+                    options.add(titleOptions.get(i));
+                }
+                options.add(song.getName());
+            }
+
+            if (options.size() < 3) {
+                throw new IllegalArgumentException(
+                        "No hay opciones disponibles en la playlist para generar las de respuesta.");
+            }
+            // Mezclar las opciones
+            Collections.shuffle(options);
+            // Establecer las opciones en la ronda
+            roundInfo.setOptions(options);
+        }
+
         // Cargar la información de la nueva ronda
         roundInfo.setRoundNumber(gameRoundsDTO.getRoundNumber() + 1);
         roundInfo.setSongId(song.getId());
@@ -200,8 +274,20 @@ public class PartidaService {
         gameRoundsDTO.setRound(gameRoundsDTO.getRoundNumber() - 1, roundInfo);
         Song song = entityManager.find(Song.class, gameRoundsDTO.getSong(gameRoundsDTO.getRoundNumber() - 1));
         roundResponse.setSongId(song.getId());
+        roundResponse.setArtists(song.getArtists());
         roundResponse.setSongName(song.getName());
 
+        GameConfigDTO gameConfig = new GameConfigDTO();
+        gameConfig.parseGameConfigDTO(game.getConfigJson());
+
+        List<String> correctAnswers;
+        if (gameConfig.getGameAnswerMode().equals("artist")) {
+            List<String> artists = roundResponse.getArtists();
+            correctAnswers = new ArrayList<>(artists);
+        } else {
+            correctAnswers = new ArrayList<>();
+            correctAnswers.add(song.getName());
+        }
         // Procesar las respuestas de los jugadores
         Map<Long, Boolean> userTry = new HashMap<>();
         userAnswers.forEach((key, value) -> {
@@ -209,7 +295,7 @@ public class PartidaService {
             PlayerGame playerGame = entityManager.find(PlayerGame.class,
                     new PlayerGameId(game.getId(), key));
             int score = 0;
-            if (value.equalsIgnoreCase(song.getName())) {
+            if (correctAnswers.contains(value)) {
                 // Guardar el intento correcto
                 score += 10;
                 userTry.put(key, true);
@@ -229,8 +315,6 @@ public class PartidaService {
         game.setRoundJson(roundInfo.toString());
 
         // Actualizar la información de la ronda en el juego
-        GameConfigDTO gameConfig = new GameConfigDTO();
-        gameConfig.parseGameConfigDTO(game.getConfigJson());
         game.setRoundJson(gameRoundsDTO.toString());
 
         // Devolver el resultado de la ronda
@@ -422,6 +506,27 @@ public class PartidaService {
         return titulos;
     }
 
+    public List<String> getArtists() {
+        // Obtener la lista de artistas de canciones activas
+        List<String> artistas = new ArrayList<>();
+        try {
+            List<?> artistasPorCancionRaw = entityManager
+                    .createNamedQuery("Song.getActiveSongsArtists", List.class).getResultList();
+
+            // Convertir cada elemento a List<String> y "flatten" eliminando duplicados
+            Set<String> artistasUnicos = artistasPorCancionRaw.stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(o -> ((List<?>) o).stream().map(Object::toString))
+                    .collect(Collectors.toSet());
+
+            // Si necesitas una lista:
+            artistas = new ArrayList<>(artistasUnicos);
+        } catch (Exception e) {
+            throw new RuntimeException("No se pudieron obtener los artistas de las canciones.", e);
+        }
+        return artistas;
+    }
+
     public int getPosition(Game game, long id) {
         // Obtener la posición del jugador en la partida
         PlayerGame playerGame = entityManager.find(PlayerGame.class,
@@ -434,43 +539,52 @@ public class PartidaService {
     }
 
     public File generateFragment(File audioOriginal, int duracion) throws IOException, InterruptedException {
-        // Método para generar un fragmento de audio aleatorio de una canción mediante
-        // ffmpeg
+        // Método para generar un fragmento de audio aleatorio de una canción usando
+        // FFmpegFrameGrabber y FFmpegFrameRecorder
         // 1. Obtener duración total del audio
-        ProcessBuilder probeBuilder = new ProcessBuilder(
-                "ffprobe", "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                audioOriginal.getAbsolutePath());
-        Process probe = probeBuilder.start();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(probe.getInputStream()));
-        double totalDuration = Double.parseDouble(reader.readLine().trim());
-        probe.waitFor();
+        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(audioOriginal)) {
+            grabber.start();
+            double totalDuration = grabber.getLengthInTime() / 1_000_000.0; // microsegundos a segundos
 
-        // 2. Si la canción es más corta que el tiempo requerido, devolver el original
-        if (totalDuration <= duracion)
-            return audioOriginal;
+            // 2. Si la canción es más corta que el tiempo requerido, devolver el original
+            if (totalDuration <= duracion) {
+                grabber.stop();
+                return audioOriginal;
+            }
 
-        // 3. Calcular inicio aleatorio
-        double start = Math.random() * (totalDuration - duracion);
+            // 3. Calcular inicio aleatorio
+            double start = Math.random() * (totalDuration - duracion);
 
-        // 4. Crear archivo temporal
-        File tempFile = File.createTempFile("fragment_", ".mp3");
+            // 4. Crear archivo temporal
+            File tempFile = File.createTempFile("fragment_", ".ogg");
 
-        // 5. Ejecutar ffmpeg para recortar el audio e insertarlo en el archivo temporal
-        ProcessBuilder ffmpegBuilder = new ProcessBuilder(
-                "ffmpeg", "-y",
-                "-ss", String.valueOf(start),
-                "-t", String.valueOf(duracion),
-                "-i", audioOriginal.getAbsolutePath(),
-                "-c:a", "libmp3lame",
-                tempFile.getAbsolutePath());
-        ffmpegBuilder.redirectErrorStream(true);
-        Process ffmpeg = ffmpegBuilder.start();
-        ffmpeg.waitFor();
+            // 5. Posicionar el grabber en el tiempo de inicio
+            grabber.setTimestamp((long) (start * 1_000_000)); // segundos a microsegundos
 
-        // 6. Devolver el archivo temporal con el fragmento
-        return tempFile;
+            // 6. Configurar el recorder
+            try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(
+                    tempFile, grabber.getAudioChannels())) {
+                recorder.setFormat("ogg");
+                recorder.setSampleRate(grabber.getSampleRate());
+                recorder.setAudioChannels(grabber.getAudioChannels());
+                recorder.setAudioCodec(avcodec.AV_CODEC_ID_OPUS);
+                recorder.start();
+
+                // 7. Grabar los frames de audio durante la duración solicitada
+                long endTimestamp = (long) ((start + duracion) * 1_000_000);
+                while (grabber.getTimestamp() < endTimestamp) {
+                    Frame frame = grabber.grabSamples();
+                    if (frame == null)
+                        break;
+                    recorder.recordSamples(frame.sampleRate, frame.audioChannels, frame.samples);
+                }
+                recorder.stop();
+            }
+            grabber.stop();
+
+            // 8. Devolver el archivo temporal con el fragmento
+            return tempFile;
+        }
     }
 
     // FIN GAME GETTERS and AUX METHODS

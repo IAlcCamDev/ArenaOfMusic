@@ -22,6 +22,19 @@
             <h1 class="titulo shadow-lg p-3 rounded">ARENA OF MUSIC</h1>
         </div>
 
+        <!-- Tarjeta de mensaje de los administradores -->
+        <div th:if="${u} and ${am} and ${am} > 0" class="card p-2 mt-3 d-flex text-center align-items-center"
+            style="background-color: var(--bs-warning-bg-subtle);">
+            <h2>⚠️</h2>
+            <h2 th:text="${am == 1} ? 'Tienes 1 mensaje de los administradores sin leer' : 'Tienes ' + ${am} + ' mensajes de los administradores sin leer'"
+                style="color: var(--bs-warning-text-emphasis);">
+            </h2>
+            <a th:href="@{/chat/ArenaOfMusic}" class="btn hoverable"
+                style="background-color: var(--bs-primary-border-subtle); color: var(--bs-primary-text-emphasis);">
+                Leer
+            </a>
+        </div>
+
         <!-- Tarjeta de bienvenida -->
         <div class="card shadow-lg p-2 mt-3 w-75" style="max-width:700px;">
             <div class="card-body text-center">
@@ -35,29 +48,42 @@
             </div>
         </div>
 
+        <!-- Tarjeta del botón -->
+        <div class="card tarjeta-boton shadow-lg mt-3">
+            <div class="card-body text-center">
+                <button id="btn-jugar" class="btn btn-success btn-lg" data-bs-toggle="modal"
+                    data-bs-target="#modosModal">JUGAR</button>
+            </div>
+        </div>
+
         <!-- Sección con texto y foto -->
-        <div class="card shadow-lg p-2 mt-3 w-75">
+        <div class="card shadow-lg p-2 mt-3 mb-3 w-75">
             <div class="row align-items-center">
                 <div class="col-md-8 text-center">
                     <h3 class="text-center">¿Cómo jugar?</h3>
-                    <p>
-                        Puedes jugar en distintas modalidades y crear tus propias playlists personalizadas para hacerlo aún más divertido.
-                        En cada partida se juegan varias rondas: se reproduce un fragmento de una canción de la playlist elegida y tendrás que adivinar el título lo más rápido posible.
-                        ¿Podrás reconocerlas todas solo con unos segundos de música? ¡Demuestra lo que sabes y reta a tus amigos!
+                    <p class="text-start">
+                        En Arena of Music, cada partida se compone de varias rondas en las que deberás demostrar tus
+                        conocimientos musicales. Al iniciar una partida, selecciona el modo de juego y la playlist que
+                        prefieras. En cada ronda, se reproducirá automáticamente un fragmento de una canción y tendrás
+                        un tiempo limitado para responder.
+                        <br><br>
+                        Según la configuración, deberás identificar correctamente el título de la canción o el nombre
+                        del artista. Puedes responder escribiendo tu respuesta manualmente o seleccionando entre varias
+                        opciones, dependiendo del formato de respuesta elegido. ¡La rapidez y la precisión son clave!
+                        <br><br> El sistema evalúa automáticamente tus respuestas y muestra los resultados al finalizar
+                        cada
+                        ronda. Puedes jugar en solitario para practicar o competir contra otros jugadores en los modos
+                        multijugador y duelo <i class="text-muted">(Próximamente...)</i>. Al finalizar la partida, se
+                        mostrarán las puntuaciones y los resultados de cada ronda.
+                        <br><br> ¡Optimiza tu estrategia, mejora tus tiempos de respuesta y conviértete en el referente
+                        musical
+                        de Arena of Music!
                     </p>
                 </div>
                 <div class="col-md-4 text-center">
                     <img src="/img/dj.png" alt="Imagen de dj" class="img-fluid rounded"
                         style="max-width: 170px; height: auto;">
                 </div>
-            </div>
-        </div>
-
-        <!-- Tarjeta del botón -->
-        <div class="card tarjeta-boton shadow-lg mt-3">
-            <div class="card-body text-center">
-                <button id="btn-jugar" class="btn btn-success btn-lg" data-bs-toggle="modal"
-                    data-bs-target="#modosModal">JUGAR</button>
             </div>
         </div>
     </main>
@@ -75,7 +101,8 @@
                         <div class="row row-cols-3 justify-content-center align-items-center g-3">
 
                             <div class="col">
-                                <div class="card hoverable text-white text-center bg-secondary mb-3" id="modo-solitario">
+                                <div class="card hoverable text-white text-center bg-secondary mb-3"
+                                    id="modo-solitario">
                                     <a th:href="@{partida/configuracion-partida/solo}" class="stretched-link"></a>
                                     <img src="/img/iconos/solitario.png" alt="Modo Solitario" class="p-2">
                                     <div class="card-body">
@@ -84,7 +111,8 @@
                                 </div>
                             </div>
                             <div class="col">
-                                <div class="card desactivar text-white text-center bg-secondary mb-3 opacity-50" id="modo-duelo">
+                                <div class="card desactivar text-white text-center bg-secondary mb-3 opacity-50"
+                                    id="modo-duelo">
                                     <a th:href="@{configuracion-partida/duel}" class="stretched-link" disabled></a>
                                     <img src="/img/iconos/duelo.png" alt="Modo Duelo" class="p-2">
                                     <div class="card-body">
@@ -93,7 +121,8 @@
                                 </div>
                             </div>
                             <div class="col">
-                                <div class="card desactivar text-white text-center bg-secondary mb-3 opacity-50" id="modo-multijugador">
+                                <div class="card desactivar text-white text-center bg-secondary mb-3 opacity-50"
+                                    id="modo-multijugador">
                                     <a th:href="@{configuracion-partida/multiplayer}" class="stretched-link"
                                         disabled></a>
                                     <img src="/img/iconos/fiesta.png" alt="Modo Multijugador" class="p-2">
