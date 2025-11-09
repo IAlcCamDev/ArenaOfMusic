@@ -155,39 +155,9 @@ public class AdminController {
         }
     }
 
-    @PostMapping("/user/toggle-enable")
-    @ResponseBody
-    @Transactional
-    public String toggleEnable(@RequestBody User user) {
-
-        log.info("Toggling enable for user: " + user.getId());
-        User u = entityManager.find(User.class, user.getId());
-        if (u != null) {
-            u.setEnabled(!u.isEnabled());
-            entityManager.persist(u);
-            return "{\"success\": true}";
-        } else {
-            return "{\"success\": false}";
-        }
-    }
-
-    @Autowired
-    private UserService userService;
-
-    @GetMapping("/user/{name}")
-    public String verPerfil(@PathVariable String name, Model model) {
-        model.addAttribute("user", userService.findByUsername(name));
-        return "ver-perfil";
-    }
-
-    @Autowired
-    private MessageService messageService;
-
-    @PostMapping("/user/submitComment")
-    public ResponseEntity<?> submitComment(@ModelAttribute UserCommentDTO udto) {
-        messageService.sendMessage(userService.findByUsername("ArenaOfMusic"),
-                userService.findByUsername(udto.getUsername()), udto.getComment());
-        return ResponseEntity.ok().build();
+    @GetMapping({ "/reports", "/reports/" })
+    public String reports(Model model) {
+        return "admin/reports";
     }
 
     @GetMapping({ "/spectate", "/spectate/" })
