@@ -8,9 +8,15 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import es.ucm.fdi.iw.model.User;
 import es.ucm.fdi.iw.service.AmigosService;
+import es.ucm.fdi.iw.service.BlockService;
+import es.ucm.fdi.iw.service.ReportService;
+import es.ucm.fdi.iw.service.UserService;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,7 +29,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class AmigosController {
 
     @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
     private AmigosService amigosService;
+
+    @Autowired
+    private BlockService blockService;
+
+    @Autowired
+    private ReportService reportService;
 
     @ModelAttribute
     public void populateModel(HttpSession session, Model model) {
@@ -38,9 +56,11 @@ public class AmigosController {
             viewType = "amigos";
         }
 
-        model.addAttribute("friends", amigosService.getFriends());
-        model.addAttribute("requests", amigosService.getRequests());
-        model.addAttribute("selectedUser", amigosService.getSelectedUser());
+        String me = principal.getName();
+
+        model.addAttribute("friends", amigosService.getFriends(me, null));
+        model.addAttribute("requests", amigosService.getRequests(me, null));
+        model.addAttribute("selectedUser", null);
         model.addAttribute("viewType", viewType);
 
         return "amigos";

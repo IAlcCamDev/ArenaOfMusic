@@ -3,7 +3,6 @@ package es.ucm.fdi.iw.controller.admincontrollers;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
@@ -46,8 +45,6 @@ public class PlaylistsController {
     @Autowired
     private PlaylistService playlistService;
 
-    private static final List<String> availableViewTypes = List.of("new-playlist", "new-song", "list");
-
     @ModelAttribute
     public void populateModel(HttpSession session, Model model) {
         for (String name : new String[] { "u", "url", "ws" }) {
@@ -59,7 +56,7 @@ public class PlaylistsController {
     public String index(Model model, @RequestParam(name = "view", required = false) String viewType,
             @RequestParam(required = false) String search, @RequestParam(required = false) String songUpload,
             @RequestParam(required = false) String playlistUpload,
-            @RequestParam(required = false) String id) {// TODO Hacer que el GET acepte todo tipo de filtros
+            @RequestParam(required = false) String id) {
         model.addAttribute("viewType", viewType == null || viewType.isBlank() ? "list" : viewType);
         model.addAttribute("search", search == null || search.isBlank() ? "playlists" : search);
 

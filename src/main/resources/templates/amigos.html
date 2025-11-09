@@ -3,6 +3,7 @@
 
 <head>
     <th:block th:replace="~{fragments/head :: header}" />
+    <th:block th:replace="~{fragments/report-actions :: report-modal}" />
     <title>Arena Of Music</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
 </head>
@@ -17,8 +18,7 @@
                 <!-- Lista de amigos -->
                 <div class="col-md-5 left-panel me-md-4 offset-md-3" id="leftPanel">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h2 class="fw-bold"
-                            th:text="${viewType == 'solicitudes' ? 'Solicitudes' : 'Amigos'}">
+                        <h2 class="fw-bold" th:text="${viewType == 'solicitudes' ? 'Solicitudes' : 'Amigos'}">
                             Amigos
                         </h2>
                     </div>
@@ -71,7 +71,7 @@
 
                         <!-- Añadir amigos -->
                         <div class="d-grid">
-                            <button class="btn btn-light border">
+                            <button class="btn border" data-bs-target="#addFriend" data-bs-toggle="modal">
                                 <i class="bi bi-plus"></i> Añadir amigos
                             </button>
                         </div>

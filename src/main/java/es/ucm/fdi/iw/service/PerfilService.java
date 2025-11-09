@@ -1,9 +1,12 @@
 package es.ucm.fdi.iw.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import es.ucm.fdi.iw.model.Game;
 import es.ucm.fdi.iw.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -21,7 +24,7 @@ public class PerfilService {
     public void actualizarPerfil(User user, String username, String email, String description, String oldPassword,
             String newPassword, String img) {
 
-        // Check for duplicate username
+        // Check for duplicate usernameAdd commentMore actions
         if (!user.getUsername().equals(username) && usernameExists(username)) {
             throw new IllegalArgumentException("Username is already in use.");
         }
@@ -83,6 +86,17 @@ public class PerfilService {
             throw new IllegalArgumentException("User not found");
         }
         return u;
+    }
+
+    /**
+     * Restituisce tutte le partite giocate dall'utente come PlayerGame (per
+     * posizione e score/aciertos)
+     */
+    public List<Game> getUserGames(User user) {
+        return entityManager.createQuery(
+                "SELECT pg.game FROM PlayerGame pg WHERE pg.user = :user", Game.class)
+                .setParameter("user", user)
+                .getResultList();
     }
 
     // NOT USED

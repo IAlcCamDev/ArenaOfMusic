@@ -5,9 +5,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import es.ucm.fdi.iw.dto.game.GameRoundsDTO;
+import es.ucm.fdi.iw.model.Friendship;
+import es.ucm.fdi.iw.model.FriendshipId;
+import es.ucm.fdi.iw.model.Game;
+import es.ucm.fdi.iw.model.PlayerGame;
+import es.ucm.fdi.iw.model.User;
+import jakarta.persistence.EntityManager;
 
 @Service
+@Transactional
 public class AmigosService {
 
     private List<Map<String, Object>> friends;

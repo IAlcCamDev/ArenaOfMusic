@@ -1,10 +1,7 @@
 package es.ucm.fdi.iw.service;
 
-import java.awt.Image;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -14,12 +11,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
-
-import javax.imageio.ImageIO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -41,7 +34,6 @@ import es.ucm.fdi.iw.util.ImageConverter;
 import es.ucm.fdi.iw.util.ImageConverter.ImageConversionException;
 import es.ucm.fdi.iw.util.ImageConverter.UnsupportedImageException;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaDelete;
@@ -52,7 +44,6 @@ import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.transaction.Transactional;
-import lombok.experimental.StandardException;
 
 @Service
 public class SongService {
@@ -105,8 +96,8 @@ public class SongService {
             File imgDest = new File(UPLOAD_DIR + song.getId() + "/cover.webp");
             ImageConverter.readAndConvertImage(data.getCover().getInputStream(), imgDest.toPath());
 
-            File songDest = new File(UPLOAD_DIR + song.getId() + "/audio.mp3");
-            AudioConverter.convertToMP3(data.getAudio(), songDest);
+            File songDest = new File(UPLOAD_DIR + song.getId() + "/audio.ogg");
+            AudioConverter.convertToOpus(data.getAudio(), songDest);
 
             return song.getId();
 
@@ -186,11 +177,11 @@ public class SongService {
                             new File(UPLOAD_DIR + song.getId() + "/cover.webp").toPath());
 
                 if (audio != null) {
-                    File songDest = new File(UPLOAD_DIR + song.getId() + "/audio.mp3");
-                    AudioConverter.convertToMP3(audio, songDest);
+                    File songDest = new File(UPLOAD_DIR + song.getId() + "/audio.ogg");
+                    AudioConverter.convertToOpus(audio, songDest);
                 } else
-                    Files.copy(oldPath.resolve(timestamp + ".mp3"),
-                            new File(UPLOAD_DIR + song.getId() + "/audio.mp3").toPath());
+                    Files.copy(oldPath.resolve(timestamp + ".ogg"),
+                            new File(UPLOAD_DIR + song.getId() + "/audio.ogg").toPath());
             }
 
         } catch (IOException | AudioConversionException e) {
@@ -204,9 +195,9 @@ public class SongService {
                     Path mainImgPath = mainPath.resolve("cover.webp");
                     if (!Files.exists(mainImgPath)) {
                         Files.move(oldPath.resolve(timestamp + ".webp"), mainImgPath);
-                        Path mainSongPath = mainPath.resolve("audio.mp3");
+                        Path mainSongPath = mainPath.resolve("audio.ogg");
                         if (!Files.exists(mainSongPath)) {
-                            Files.move(oldPath.resolve(timestamp + ".mp3"), mainSongPath);
+                            Files.move(oldPath.resolve(timestamp + ".ogg"), mainSongPath);
                         }
                     }
                 }
@@ -282,11 +273,10 @@ public class SongService {
     public Page<Song.Transfer> searchSongs(SongSearchFiltersDTO filters, Pageable pageable) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
+        // Consulta principal paginada
         CriteriaQuery<Song> select = cb.createQuery(Song.class);
         Root<Song> selectRoot = select.from(Song.class);
-
         List<Predicate> predicates = buildPredicates(cb, selectRoot, filters);
-
         select.where(predicates.toArray(new Predicate[0]));
 
         if (pageable.isPaged() && pageable.getSort().isSorted()) {
@@ -302,11 +292,19 @@ public class SongService {
             query.setFirstResult((int) pageable.getOffset());
             query.setMaxResults(pageable.getPageSize());
         }
+
         List<Song> resultList = query.getResultList();
 
-        Page<Song> page = new PageImpl<>(resultList, pageable, resultList.size());
+        // Consulta para contar el total de resultados
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<Song> countRoot = countQuery.from(Song.class);
+        countQuery.select(cb.count(countRoot));
+        List<Predicate> countPredicates = buildPredicates(cb, countRoot, filters);
+        countQuery.where(countPredicates.toArray(new Predicate[0]));
 
-        return page.map(Song::toTransfer);
+        Long total = entityManager.createQuery(countQuery).getSingleResult();
+
+        return new PageImpl<>(resultList.stream().map(Song::toTransfer).toList(), pageable, total);
     }
 
     public Page<Song.Transfer> searchSongs(SongSearchFiltersDTO filters) {
@@ -379,7 +377,7 @@ public class SongService {
         if (!existsSong(id))
             throw new IllegalArgumentException("No existe la canción con id " + id);
 
-        Path audioPath = Paths.get(UPLOAD_DIR + id + "/audio.mp3");
+        Path audioPath = Paths.get(UPLOAD_DIR + id + "/audio.ogg");
         if (Files.exists(audioPath)) {
             return audioPath.toFile();
         } else {
